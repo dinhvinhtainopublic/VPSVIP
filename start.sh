@@ -1,10 +1,7 @@
 #!/bin/bash
-mkdir -p /var/run/dbus
-dbus-daemon --system --fork
 
-mkdir -p /tmp/.X11-unix
-chmod 1777 /tmp/.X11-unix
+# Khởi tạo thư mục SSH runtime
+mkdir -p /var/run/sshd
 
-# Chạy LXDE nếu dùng XRDP
-startlxde &
-/usr/sbin/xrdp --nodaemon
+# Chạy SSH trên port 10000 (đã set trong Dockerfile)
+exec /usr/sbin/sshd -D -p 10000
