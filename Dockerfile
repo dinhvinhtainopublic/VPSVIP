@@ -1,18 +1,23 @@
 FROM debian
 
-RUN apt update && apt install -y openssh-server sudo curl wget git htop nano
+# Chuẩn bị môi trường (chỉ chạy trong build, không phải runtime)
+RUN apt update && \
+    DEBIAN_FRONTEND=noninteractive apt install -y openssh-server sudo curl wget git htop nano
 
-# Tạo user
+# Tạo user như file gốc tạo HOME
 RUN useradd -m server && echo "server:123456" | chpasswd && usermod -aG sudo server
 
-# Chuẩn bị SSH
-RUN mkdir /var/run/sshd
+# Tạo folder SSH runtime (giống file gốc tạo folder trước khi chạy)
+RUN mkdir -p /var/run/sshd
 
-# 🔥 Quan trọng: đổi SSH sang port 10000 (Render mới nhận)
+# Render không hỗ trợ cổng 22 nên đổi sang 10000
 RUN echo "Port 10000" >> /etc/ssh/sshd_config
 
-# 🔥 Expose port cho Render
+# Giữ kiểu EXPOSE như file gốc
 EXPOSE 10000
 
-# Chạy sshd trên port 10000
-CMD ["/usr/sbin/sshd", "-D"]
+# Giữ cấu trúc: COPY script ra ngoài như file gốc COPY/ENTRYPOINT
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+CMD ["/start.sh"]
