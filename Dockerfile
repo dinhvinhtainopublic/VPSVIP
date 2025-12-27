@@ -1,30 +1,18 @@
 FROM debian
 
-RUN dpkg --add-architecture i386
-RUN apt update && \
-    DEBIAN_FRONTEND=noninteractive apt install -y \
-    wine qemu-kvm xz-utils dbus-x11 curl firefox-esr git \
-    lxde-core lxde-icon-theme lxtask lxterminal \
-    tightvncserver wget novnc websockify
+RUN apt update && apt install -y openssh-server sudo curl wget git htop nano
 
-# noVNC
-RUN wget https://github.com/novnc/noVNC/archive/refs/tags/v1.2.0.tar.gz && \
-    tar -xvf v1.2.0.tar.gz
+# Tạo user
+RUN useradd -m server && echo "server:123456" | chpasswd && usermod -aG sudo server
 
-# VNC Config
-RUN mkdir -p $HOME/.vnc && \
-    echo 'admin123@a' | vncpasswd -f > $HOME/.vnc/passwd && \
-    echo 'LXDE' > $HOME/.vnc/desktop && \
-    echo '#!/bin/sh\nstartlxde &' > $HOME/.vnc/xstartup && \
-    chmod 600 $HOME/.vnc/passwd && \
-    chmod +x $HOME/.vnc/xstartup
+# Chuẩn bị SSH
+RUN mkdir /var/run/sshd
 
-# Start Script
-RUN echo '#!/bin/bash' > /start.sh && \
-    echo "vncserver :2000 -geometry 1360x768 -depth 24" >> /start.sh && \
-    echo "cd /noVNC-1.2.0" >> /start.sh && \
-    echo "./utils/launch.sh --vnc localhost:5900 --listen 8900" >> /start.sh && \
-    chmod +x /start.sh
+# 🔥 Quan trọng: đổi SSH sang port 10000 (Render mới nhận)
+RUN echo "Port 10000" >> /etc/ssh/sshd_config
 
-EXPOSE 8900
-CMD ["/start.sh"]
+# 🔥 Expose port cho Render
+EXPOSE 10000
+
+# Chạy sshd trên port 10000
+CMD ["/usr/sbin/sshd", "-D"]
