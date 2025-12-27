@@ -1,19 +1,39 @@
-FROM debian
+FROM debian:latest
+
+## Kiến trúc & update
 RUN dpkg --add-architecture i386
 RUN apt update
-RUN DEBIAN_FRONTEND=noninteractive apt install wine qemu-kvm *zenhei* xz-utils dbus-x11 curl firefox-esr gnome-system-monitor mate-system-monitor  git xfce4 xfce4-terminal tightvncserver wget   -y
+
+## Cài GUI nhẹ + VNC + Firefox nhẹ
+RUN DEBIAN_FRONTEND=noninteractive apt install -y \
+    lxde lxtask openbox \
+    firefox-esr --no-install-recommends \
+    tightvncserver novnc websockify \
+    dbus-x11 xz-utils curl git wget
+
+## Tối ưu RAM cho Firefox (profile nhẹ)
+RUN mkdir -p /etc/firefox
+RUN echo "MOZ_DISABLE_GMP_SANDBOX=1" >> /etc/firefox/firefox.conf
+RUN echo "user_pref(\"browser.sessionstore.max_tabs_undo\", 2);" >> ~/.mozilla/firefox/prefs.js
+RUN echo "user_pref(\"browser.cache.disk.capacity\", 20480);" >> ~/.mozilla/firefox/prefs.js
+
+## Cài noVNC
 RUN wget https://github.com/novnc/noVNC/archive/refs/tags/v1.2.0.tar.gz
-RUN tar -xvf v1.2.0.tar.gz
-RUN mkdir  $HOME/.vnc
-RUN echo 'admin123@a' | vncpasswd -f > $HOME/.vnc/passwd
-RUN echo '/bin/env  MOZ_FAKE_NO_SANDBOX=1  dbus-launch xfce4-session'  > $HOME/.vnc/xstartup
+RUN tar -xvf v1.2.0.tar.gz && mv noVNC-1.2.0 /opt/novnc
+
+## Setup VNC
+RUN mkdir -p $HOME/.vnc
+RUN echo '12345678' | vncpasswd -f > $HOME/.vnc/passwd
+RUN echo '#!/bin/sh' > $HOME/.vnc/xstartup
+RUN echo 'lxsession &' >> $HOME/.vnc/xstartup
 RUN chmod 600 $HOME/.vnc/passwd
-RUN chmod 755 $HOME/.vnc/xstartup
-RUN echo 'whoami ' >>/luo.sh
-RUN echo 'cd ' >>/luo.sh
-RUN echo "su -l -c 'vncserver :2000 -geometry 1360x768' "  >>/luo.sh
-RUN echo 'cd /noVNC-1.2.0' >>/luo.sh
-RUN echo './utils/launch.sh  --vnc localhost:7900 --listen 8900 ' >>/luo.sh
-RUN chmod 755 /luo.sh
+RUN chmod +x $HOME/.vnc/xstartup
+
+## Script chạy desktop
+RUN echo '#!/bin/bash' > /start.sh
+RUN echo "vncserver :1 -geometry 1280x720 -depth 16" >> /start.sh
+RUN echo "cd /opt/novnc && ./utils/launch.sh --vnc localhost:5901 --listen 8900" >> /start.sh
+RUN chmod +x /start.sh
+
 EXPOSE 8900
-CMD  /luo.sh
+CMD ["/start.sh"]
